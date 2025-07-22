@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.faiss
+*.pkl
+*.db*
+*.sqlite
+.env
+vectorstore/db_faiss/*
+!vectorstore/db_faiss/.gitkeep  # If you want to keep the folder, not the index files

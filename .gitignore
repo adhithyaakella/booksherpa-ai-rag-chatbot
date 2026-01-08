@@ -1,9 +1,28 @@
+# Environment
 venv/
-__pycache__/
-*.faiss
-*.pkl
-*.db*
-*.sqlite
 .env
-vectorstore/db_faiss/*
-!vectorstore/db_faiss/.gitkeep  # If you want to keep the folder, not the index files
+__pycache__/
+*.pyc
+
+# Local Data (Do not commit real data)
+data/*
+!data/.gitkeep
+vectorstore/*
+!vectorstore/.gitkeep
+
+# Databases & State
+*.db
+*.sqlite
+*.pkl
+
+# Logs & Reports
+eval_report_*.txt
+*.log
+
+# Vector Index Files
+*.faiss
+*.index
+
+# OS
+.DS_Store
+Thumbs.db

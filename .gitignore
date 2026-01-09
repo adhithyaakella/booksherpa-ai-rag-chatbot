@@ -26,3 +26,6 @@ eval_report_*.txt
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated Static Assets
+frontend/static/

@@ -28,21 +28,15 @@
 
 ```
 booksherpa-ai/
-├── app/
-│   ├── config.py           # Configuration & Keys
-│   ├── services.py         # LLM & Embedding Singletons
-│   ├── retrieval.py        # Hybrid Search & Re-ranking Logic
-│   ├── chat.py             # Chat History Management
-│   ├── rag_qa.py           # Main Controller (Facade)
-│   └── features/           # Modular Business Logic
-│       ├── quiz.py
-│       ├── tutor.py
-│       └── summary.py
+├── app/                  # Backend Logic
 ├── frontend/
-│   └── BookSherpa_AI.py    # Streamlit Interface
-├── data/                   # Source PDFs
-├── docs/                   # Documentation & Logs
-└── vectorstore/            # FAISS Index
+│   ├── components/       # UI Modules (Sidebar, Styles)
+│   └── BookSherpa_AI.py  # Main Entry Point
+├── data/                 # Source PDFs
+├── docs/                 # Documentation
+├── scripts/              # Utility Scripts (Eval, Tools)
+├── tests/                # Unit Tests
+└── vectorstore/          # FAISS Index
 ```
 
 ---
@@ -73,12 +67,17 @@ OPENAI_API_KEY=sk-your-key-here
 ```
 *(Note: This project uses OpenAI GPT-4o-mini for reasoning)*
 
-### 5. Ingest Data
+### 5. Ingest Data (Two Options)
+**Option A (Easy UI):**
+1.  Launch the app (`step 6`).
+2.  Use the **"Library Manager"** in the sidebar to upload PDFs.
+3.  Click "🔄 Build Knowledge Base".
+
+**Option B (CLI):**
 Place your PDF in `data/` and run:
 ```bash
 python app/ingest.py
 ```
-This will extract text & images and build the FAISS index.
 
 ### 6. Run the App
 ```bash
@@ -89,7 +88,7 @@ Visit `http://localhost:8501`.
 ### 7. Evaluation (Optional)
 To verify the RAG pipeline's accuracy using **LLM-as-a-Judge**:
 ```bash
-python run_eval.py
+python scripts/run_eval.py
 ```
 This runs a test suite of questions and grades the answers (1-5) using GPT-4o-mini.
 

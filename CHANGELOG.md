@@ -2,6 +2,38 @@
 
 All notable changes to the **BookSherpa AI** project will be documented in this file.
 
+## [Phase 11.0] - 2026-01-09
+### Added
+- **Query Expansion**: Implemented `MultiQueryRetriever` to generate 3 variations of user questions, aiming to improve recall for ambiguous queries.
+- **Strict Mode**: Updated System Prompt to explicitly forbid answering from outside knowledge if context is found, reducing hallucinations.
+
+## [Phase 10.0] - 2026-01-09
+### Cleaned
+- **Project Structure**: Created `scripts/` folder for utility scripts (`run_eval.py`).
+- **Optimization**: Modularized `frontend` directory.
+
+## [Phase 9.0] - 2026-01-09
+### Added
+- **Testing Suite**: Added `tests/` directory with `pytest` compatibility.
+- **Unit Tests**: Added `test_config.py` and `test_chunking.py` to verify core logic.
+
+## [Phase 8.0] - 2026-01-09
+### Changed
+- **Refactoring**: Split `BookSherpa_AI.py` into modular components (`sidebar.py`, `ui.py`).
+- **Code Quality**: Reduced main file size by ~100 lines.
+
+## [Phase 7.0] - 2026-01-08
+### Added
+- **UI Polish**: Injected custom CSS for modern chat bubbles and typography.
+- **Empty State**: Added "Welcome Screen" for new users.
+- **Visuals**: Cleaned up layout and icons.
+
+## [Phase 6.0] - 2026-01-08
+### Added
+- **Library Manager**: Sidebar UI to upload PDFs directly to the `data/` folder.
+- **Auto-Ingestion**: "Build Knowledge Base" button runs the ingestion pipeline from the browser with real-time logs.
+- **LLM-as-a-Judge**: Automated quality evaluation script (`run_eval.py`).
+
 ## [Phase 4.0] - 2026-01-03
 ### Added
 - **Hybrid Search**: Implemented `EnsembleRetriever` combining **BM25** (Keyword) and **FAISS** (Semantic).

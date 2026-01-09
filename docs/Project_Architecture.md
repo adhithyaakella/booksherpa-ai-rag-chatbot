@@ -1,7 +1,7 @@
 # BookSherpa AI: Project Journey & Architecture 🚀
 
-**Date**: January 5, 2026
-**Version**: 4.0
+**Date**: January 9, 2026
+**Version**: 5.0 (Strict RAG)
 
 This document outlines the complete development journey of the **BookSherpa AI** application, from a basic document chatbot to an advanced, pedagogical "AI Tutor" powered by State-of-the-Art RAG techniques.
 
@@ -88,7 +88,48 @@ This document outlines the complete development journey of the **BookSherpa AI**
 
 ---
 
-## 🗺️ Summary of Tech Stack
+## �️ Phase 6 & 7: Polish & Usability
+**Goal**: Make the system robust, self-managing, and visually appealing.
+
+### Key Implementations
+1.  **Auto-Ingestion & Library Manager (Phase 6)**:
+    *   **Sidebar UI**: Moved ingestion out of the terminal. Users can upload PDFs and click "Build Knowledge Base" directly in the browser.
+    *   **Hot Reload**: The system dynamically reloads the Vector Store and RAG Chain without restarting the server.
+2.  **Visual Overhaul (Phase 7)**:
+    *   **CSS Injection**: Customized Streamlit with "BookSherpa" branding, modern typography (Inter), and colored chat bubbles.
+    *   **Empty States**: Added helpful "Welcome Screens" to guide new users.
+
+---
+
+## 🧹 Phase 8 & 9: Maturity (Refactor & Test)
+**Goal**: Professionalize the codebase for maintainability.
+
+### Key Implementations
+1.  **Frontend Modularization (Phase 8)**:
+    *   Split the monolithic `BookSherpa_AI.py` (~400 lines) into:
+        *   `components/sidebar.py`: Encapsulated file I/O and Ingestion.
+        *   `components/ui.py`: Encapsulated styles and static info.
+2.  **Testing Suite (Phase 9)**:
+    *   Added `tests/` directory with `pytest`.
+    *   **Unit Tests**: Verified configuration loading and regex chunking logic to ensure stability during updates.
+
+---
+
+## 🧠 Phase 11: Application Intelligence (Strict RAG)
+**Goal**: Eliminate hallucinations and improve query recall.
+
+### Key Implementations
+1.  **Query Expansion (Multi-Query)**:
+    *   **Problem**: Users ask vague questions like "Tell me about the quadrant".
+    *   **Solution**: We now use the LLM to generate **3 variations** of the question (e.g., "Define Cashflow Quadrant", "Explain ESBI model").
+    *   **Pipeline**: `Multi-Query -> Hybrid Search (BM25+FAISS) -> Deduplication -> Re-Ranking`.
+2.  **Strict System Prompting**:
+    *   **Anti-Hallucination**: Updated the System Prompt to explicitly **forbid** answering if the context is empty.
+    *   **Result**: If the book is not loaded, the AI says "I cannot find this info" instead of making up facts.
+
+---
+
+## �🗺️ Summary of Tech Stack
 *   **Frontend**: Streamlit
 *   **LLM**: OpenAI GPT-4o-mini
 *   **Vector Store**: FAISS

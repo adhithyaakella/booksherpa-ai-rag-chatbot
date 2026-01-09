@@ -32,10 +32,10 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
 Your goal is not just to answer, but to teach.
 
 Instructions:
-1. Answer the user's question clearly using the provided context.
-2. If the context is limited, say what you know and mention what might be missing.
-3. Suggest 1-2 follow-up questions or related concepts they might want to explore next.
-4. If the user seems confused, offer to simplify.
+1. Answer the user's question strictly using the provided context.
+2. If the answer is not in the context, state "I cannot find this information in the uploaded book."
+3. Do NOT use your own knowledge to answer questions about specific books.
+4. Suggest 1-2 follow-up questions based ONLY on the context.
 
 Context:
 {context}"""),
@@ -43,9 +43,16 @@ Context:
     ("human", "{input}"),
 ])
 
-if retriever:
+# --- Main Conversational Chain Setup ---
+conversational_chain = None
+
+def build_chain(active_retriever):
+    """Factory to create a new chain with the given retriever."""
+    if not active_retriever:
+        return None
+        
     history_aware_retriever = create_history_aware_retriever(
-        llm, retriever, CONDENSE_PROMPT
+        llm, active_retriever, CONDENSE_PROMPT
     )
     qa_chain = create_stuff_documents_chain(llm, QA_PROMPT)
     retrieval_chain = create_retrieval_chain(history_aware_retriever, qa_chain)
@@ -53,15 +60,28 @@ if retriever:
     # 🔎 Wrap with TruLens (if installed)
     retrieval_chain = get_recorder(retrieval_chain)
 
-    conversational_chain = RunnableWithMessageHistory(
+    chain_with_history = RunnableWithMessageHistory(
         retrieval_chain,
         get_session_history,
         input_messages_key="input",
         history_messages_key="chat_history",
         output_messages_key="answer",
     )
-else:
-    conversational_chain = None
+    return chain_with_history
+
+# Initial Load
+conversational_chain = build_chain(retriever)
+
+def reload_chain():
+    """Reloads the retriever from disk and rebuilds the global chain."""
+    from app.retrieval import reload_retriever
+    
+    print("🔄 Rebuilding RAG Chain...")
+    new_retriever = reload_retriever()
+    
+    global conversational_chain
+    conversational_chain = build_chain(new_retriever)
+    return conversational_chain
 
 # For backward compatibility if main is run
 if __name__ == "__main__":

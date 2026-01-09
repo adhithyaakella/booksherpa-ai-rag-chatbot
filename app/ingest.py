@@ -5,6 +5,16 @@ import glob
 import warnings
 import spacy
 
+import spacy
+
+# Re-add project root to sys.path so we can import from 'app'
+# This fixes ModuleNotFoundError when running 'python app/ingest.py' directly
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Force UTF-8 for Windows terminals/pipes to support emojis
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, UnstructuredMarkdownLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -165,9 +175,9 @@ def extract_images_from_pdf(pdf_path, output_dir_relative="frontend/static/image
                     
                 image_filename = f"{safe_name}_p{page_index}.png"
                 
-                # IMPORTANT: Streamlit serves static files, but we need a consistent URL path
-                # Ideally, this should be relative to where the frontend expects static files.
-                image_rel_path = f"static/images/{image_filename}" 
+                # IMPORTANT: Streamlit runs from PROJECT_ROOT.
+                # So the path must be relative to PROJECT_ROOT, i.e., "frontend/static/images/..."
+                image_rel_path = f"frontend/static/images/{image_filename}" 
                 
                 # Actual save location
                 save_path = os.path.join(output_abs, image_filename)

@@ -8,7 +8,10 @@ from dotenv import load_dotenv
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-from app.rag_qa import conversational_chain, generate_quiz, summarize_chapter, create_tutor_chain, launch_dashboard
+from app import rag_qa
+from app.rag_qa import generate_quiz, summarize_chapter, create_tutor_chain, launch_dashboard
+from frontend.components.sidebar import render_sidebar
+from frontend.components.ui import render_welcome_message, apply_custom_css
 
 load_dotenv()
 
@@ -17,99 +20,99 @@ st.set_page_config(
     page_title="BookSherpa AI - Interactive Q&A", page_icon="📚", layout="wide"
 )
 
+# Apply global styles
+apply_custom_css()
+
 st.title("📚 BookSherpa AI")
-st.markdown("Your AI companion for studying *Natural Language Processing with Transformers*.")
+st.markdown("Your AI companion for studying *your favorite textbook*.")
 
 # --- Tabs ---
 tab_chat, tab_quiz, tab_summary = st.tabs(["💬 Chat", "🎓 Quiz Mode", "📖 Summarizer"])
 
 # --- Session Management ---
-# Sidebar for Persistence
-with st.sidebar:
-    st.header("👤 Profile")
-    user_id = st.text_input("User ID (to save history)", value="default_user")
-    if user_id:
-        st.session_state.session_id = user_id
-    st.info(f"Session ID: {st.session_state.session_id}")
-    
-    st.divider()
-    # st.header("📊 Observability")
-    # TruLens Disabled due to dependency conflict
-
+# Sidebar Component (Handles Upload, Reset, Ingest)
+user_id = render_sidebar(PROJECT_ROOT)
 
 if "session_id" not in st.session_state:
     st.session_state.session_id = user_id if user_id else str(uuid.uuid4())
 
 # --- TAB 1: Chat Interface ---
 with tab_chat:
-    if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {"role": "assistant", "content": "Hello! Ask me anything about the book."}
-        ]
+    # 🕵️ Check Knowledge Base Status
+    is_ready = rag_qa.conversational_chain is not None
+    
+    if not is_ready:
+        render_welcome_message()
+        
+    else:
+        # --- ACTIVE STATE (Chat) ---
+        if "messages" not in st.session_state:
+            st.session_state.messages = [
+                {"role": "assistant", "content": "Hello! Ask me anything about your book."}
+            ]
 
-    # Display chat messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            if "images" in message and message["images"]:
-                with st.expander("🖼️ Visual Context"):
-                    cols = st.columns(len(message["images"]))
-                    for i, img_path in enumerate(message["images"]):
-                        with cols[i]:
-                            # Handle both old (string) and new (dict) formats
-                            if isinstance(img_path, dict):
-                                st.image(img_path["path"], caption=img_path["caption"], width="stretch")
-                            else:
-                                st.image(img_path, width="stretch")
+        # Display chat messages
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+                if "images" in message and message["images"]:
+                    with st.expander("🖼️ Visual Context"):
+                        cols = st.columns(len(message["images"]))
+                        for i, img_path in enumerate(message["images"]):
+                            with cols[i]:
+                                if isinstance(img_path, dict):
+                                    st.image(img_path["path"], caption=img_path["caption"], width="stretch")
+                                else:
+                                    st.image(img_path, width="stretch")
 
-    # Chat input
-    if prompt := st.chat_input("Ask a question about transformers..."):
-        # Add user message
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+        # Chat input
+        if prompt := st.chat_input("Ask a question about the book..."):
+            # Add user message
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-        # Generate response
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                try:
-                    config = {"configurable": {"session_id": st.session_state.session_id}}
-                    response = conversational_chain.invoke({"input": prompt}, config=config)
-                    answer = response["answer"]
-                    st.markdown(answer)
-                    
-                    # Check for images
-                    found_images = []
-                    if "context" in response:
-                        seen = set()
-                        for doc in response["context"]:
-                            img = doc.metadata.get("image_path")
-                            if img and img not in seen:
-                                seen.add(img)
-                                # Extract metadata for validation
-                                page = doc.metadata.get("page", "?")
-                                source = os.path.basename(doc.metadata.get("source", "PDF"))
-                                caption = f"Page {page} ({source})"
-                                found_images.append({"path": img, "caption": caption})
+            # Generate response
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    try:
+                        config = {"configurable": {"session_id": st.session_state.session_id}}
+                        # Use dynamic chain access
+                        response = rag_qa.conversational_chain.invoke({"input": prompt}, config=config)
+                        answer = response["answer"]
+                        st.markdown(answer)
+                        
+                        # Check for images
+                        found_images = []
+                        if "context" in response:
+                            seen = set()
+                            for doc in response["context"]:
+                                img = doc.metadata.get("image_path")
+                                if img and img not in seen:
+                                    seen.add(img)
+                                    # Extract metadata for validation
+                                    page = doc.metadata.get("page", "?")
+                                    source = os.path.basename(doc.metadata.get("source", "PDF"))
+                                    caption = f"Page {page} ({source})"
+                                    found_images.append({"path": img, "caption": caption})
 
-                    if found_images:
-                        with st.expander("🖼️ Visual Context", expanded=True):
-                            cols = st.columns(len(found_images))
-                            for i, img_path in enumerate(found_images):
-                                with cols[i]:
-                                    # Handle both old (string) and new (dict) formats
-                                    if isinstance(img_path, dict):
-                                        st.image(img_path["path"], caption=img_path["caption"], width="stretch")
-                                    else:
-                                        st.image(img_path, caption="Reference", width="stretch")
+                        if found_images:
+                            with st.expander("🖼️ Visual Context", expanded=True):
+                                cols = st.columns(len(found_images))
+                                for i, img_path in enumerate(found_images):
+                                    with cols[i]:
+                                        if isinstance(img_path, dict):
+                                            st.image(img_path["path"], caption=img_path["caption"], width="stretch")
+                                        else:
+                                            st.image(img_path, caption="Reference", width="stretch")
 
-                    st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": answer,
-                        "images": found_images
-                    })
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                        st.session_state.messages.append({
+                            "role": "assistant", 
+                            "content": answer,
+                            "images": found_images
+                        })
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
 # --- TAB 2: Tutor Mode (Conversational) ---
 with tab_quiz:
@@ -123,7 +126,7 @@ with tab_quiz:
     # We need a separate message history list for the frontend display
     if "tutor_messages" not in st.session_state:
         st.session_state.tutor_messages = [
-            {"role": "assistant", "content": "Hello! I am your AI Tutor.\nType a topic or chapter to start your lesson (e.g., *'Chapter 4'*, *'Attention'*)."}
+            {"role": "assistant", "content": "Hello! I am your AI Tutor.\\nType a topic or chapter to start your lesson (e.g., *'Chapter 4'*, *'Attention'*)."}
         ]
 
     # Helper to clean/detect intent

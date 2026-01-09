@@ -7,7 +7,8 @@ from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain.retrievers.document_compressors.cross_encoder import BaseCrossEncoder
 
 from app.config import VECTORSTORE_PATH
-from app.services import embedding_model
+from langchain.retrievers.multi_query import MultiQueryRetriever
+from app.services import embedding_model, llm
 
 # --- Adapter for Pydantic Compatibility ---
 class HFCrossEncoderAdapter(BaseCrossEncoder):
@@ -23,51 +24,78 @@ class HFCrossEncoderAdapter(BaseCrossEncoder):
     def score(self, text_pairs: List[Tuple[str, str]]) -> List[float]:
         return self.model.score(text_pairs)
 
-# --- Initialize Vector Store ---
-try:
-    vectorstore = FAISS.load_local(
-        VECTORSTORE_PATH, embedding_model, allow_dangerous_deserialization=True
-    )
-except RuntimeError:
-    print(f"⚠️ Vectorstore not found at {VECTORSTORE_PATH}. Run ingest.py first.")
-    vectorstore = None
+# --- Initialize Vector Store & Retriever ---
+vectorstore = None
+retriever = None
 
-# --- Build Advanced Retriever ---
-def get_retriever():
-    if not vectorstore:
-        return None
-        
-    # 1. Base Dense Retriever
+def initialize():
+    global vectorstore, retriever
+    
+    # 1. Load Vectorstore
+    try:
+        vectorstore = FAISS.load_local(
+            VECTORSTORE_PATH, embedding_model, allow_dangerous_deserialization=True
+        )
+    except RuntimeError:
+        print(f"⚠️ Vectorstore not found at {VECTORSTORE_PATH}. Run ingest.py first.")
+        vectorstore = None
+        retriever = None
+        return
+
+    # 2. Build Base Retriever
     faiss_retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
     
-    # 2. Add Sparse Retriever (Hybrid)
+    # 3. Hybrid Search (BM25)
     try:
         all_docs = list(vectorstore.docstore._dict.values())
         bm25_retriever = BM25Retriever.from_documents(all_docs)
         bm25_retriever.k = 10
         
-        base_retriever = EnsembleRetriever(
+        hybrid_retriever = EnsembleRetriever(
             retrievers=[faiss_retriever, bm25_retriever],
             weights=[0.5, 0.5]
         )
     except Exception as e:
         print(f"⚠️ Hybrid Search Init Failed: {e}")
-        base_retriever = faiss_retriever
+        hybrid_retriever = faiss_retriever
+        
+    # 3.5. Query Expansion (Multi-Query)
+    # Uses LLM to generate 3 variations of the question
+    try:
+        print("🧠 Initializing Query Expansion...")
+        base_retriever = MultiQueryRetriever.from_llm(
+            retriever=hybrid_retriever,
+            llm=llm
+        )
+    except Exception as e:
+        print(f"⚠️ Query Expansion Init Failed: {e}")
+        base_retriever = hybrid_retriever
 
-    # 3. Add Re-Ranking (Cross-Encoder)
+    # 4. Re-Ranking
     try:
         model_name = "cross-encoder/ms-marco-MiniLM-L-6-v2"
         community_encoder = HuggingFaceCrossEncoder(model_name=model_name)
         adapter = HFCrossEncoderAdapter(model=community_encoder)
         compressor = CrossEncoderReranker(model=adapter, top_n=5)
         
-        final_retriever = ContextualCompressionRetriever(
+        retriever = ContextualCompressionRetriever(
             base_compressor=compressor, base_retriever=base_retriever
         )
-        return final_retriever
     except Exception as e:
         print(f"❌ Re-ranker Init Failed: {e}")
-        return base_retriever
+        retriever = base_retriever
 
-# Global Singleton for import
-retriever = get_retriever()
+# Initial load
+initialize()
+
+def get_retriever():
+    """Returns the global retriever, initializing if needed."""
+    if not retriever:
+        initialize()
+    return retriever
+
+def reload_retriever():
+    """Forces a reload of the vectorstore from disk."""
+    print("♻️ Reloading Retriever from disk...")
+    initialize()
+    return retriever

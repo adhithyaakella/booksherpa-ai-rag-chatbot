@@ -39,7 +39,7 @@ This document tracks the technical details, configuration, and impact of Advance
     -   `create_retrieval_chain` will use the Ensemble instead of just FAISS.
 
 ## 2. Cross-Encoder Re-ranking
-**Status**: ⏳ Pending
+**Status**: ✅ Complete
 **Goal**: Improve precision of the "Top N" context fed to the LLM.
 **Strategy**:
 -   **Model**: `cross-encoder/ms-marco-MiniLM-L-6-v2` (HuggingFace).
@@ -51,12 +51,12 @@ This document tracks the technical details, configuration, and impact of Advance
     -   Filters out "distractor" documents that are semantically close but factually irrelevant.
 
 ## 3. Query Expansion (Multi-Query)
-**Status**: ⏳ Pending
+**Status**: ✅ Complete
 **Goal**: Handle ambiguous or simple user queries better.
 **Strategy**:
--   Use LLM to generate 3 variations of the user's question.
+-   Use LLM to generate 3 variations of the user's question via `MultiQueryRetriever`.
 -   Retrieve documents for *all* variations.
--   Deduplicate results.
+-   Deduplicate results and pass to Re-ranker.
 
 ---
 *Log will be updated as features are deployed.*
